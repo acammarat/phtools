@@ -1,0 +1,9 @@
+2               # number of atomic groups
+3               # number of atoms in group 1 (WSe2 layer)
+1               # label of the first atom in the group
+3               # ...
+4               # label of the last atom in the group
+3               # number of atoms in group 2 (MoSe layer)
+2               # label of the first atom in the group
+5               # ...
+6               # label of the last atom in the group
