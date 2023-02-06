@@ -70,7 +70,7 @@ gnuplot> plot "phchar.dat" u 1:2:3 w p palette ps 0.5
 
 The weight is rendered with the thermal map; the meaning of the weight value is explained in the header of the *phchar.dat* file.
 
-If you run the example, you should get a figure like this
+If you run the example, you should get a figure like this:
 
 ![example.png](example/example.png)
 
