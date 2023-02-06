@@ -72,7 +72,7 @@ The weight is rendered with the thermal map; the meaning of the weight value is 
 
 If you run the example, you should get a figure like this
 
-![example.png](example.png)
+![example.png](example/example.png)
 
 ## Citation
 
