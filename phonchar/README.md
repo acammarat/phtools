@@ -54,7 +54,7 @@ $ ./phonchar -h
 
 ```
 
-After the execution the file phchar.dat is created. The header of the file contains information about the content.
+After the execution, the file phchar.dat is created. The header of the file contains information about the content.
 
 ## Example
 
