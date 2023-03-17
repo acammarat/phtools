@@ -51,7 +51,7 @@ $ qpoints -h
 
 ```
 
-After the execution the files qmatrix.nd and freq.nd are created. If these files are meant to be used for Normal Dynamics simulations with [PINDOL](https://github.com/acammarat/pindol/tree/main/pindol), then it is better to prepare the list of q-points with the tool [q4phind](https://github.com/acammarat/pindol/tree/main/q4phind)
+After the execution the files qmatrix.nd and freq.nd are created. If these files are meant to be used for Normal Dynamics simulations with [PINDOL](https://github.com/acammarat/pindol/tree/main/pindol), then it is better to prepare the list of q-points with the tool [q4phind](https://github.com/acammarat/pindol/tree/main/q4phind).
 
 ## Example
 
