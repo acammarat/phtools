@@ -1,6 +1,6 @@
-# phonchar
+# eigmap
 
-Program to calculate the atomic character of phonon eigenvectors obtained from the [PHONOPY](https://phonopy.github.io/phonopy) code.
+Program to calculate the map between different eigenvector via scalar products
 
 ## Installation
 
@@ -8,11 +8,11 @@ The code requires a fortran compiler. After cloning, enter the folder and compil
 
 `make`
 
-If the compilation ends successfully, the executable phonchar is created.
+If the compilation ends successfully, the executable eigmap is created.
 
 ## Usage
 
-The band.yaml file must contain the eigenvectors; this can be obtained by setting
+The qmatrix.nd and freq.nd files of the reference and of the structure to be compared must be be created with the tool qpoints
 
 `EIGENVECTORS = .TRUE.`
 
