@@ -1,0 +1,7 @@
+phonopy -c ab.in --abinit # phonopy command line
+POSCAR          # POSCAR unit cell
+3 3 3           # mesh used to generate the FORCE_CONSTANTS file
+3               # nskip number of modes to skip
+1 1  1 2  1 3   # (q,j) list of modes to skip
+1               # number of q-points
+0.0 0.0 0.0
