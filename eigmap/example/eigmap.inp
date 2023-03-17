@@ -1,0 +1,7 @@
+qmatrix_10K.nd            #  reference eigenvector file
+freq_10K.nd               #  reference frequency file
+qmatrix_50K.nd            #  eigenvector file to compare
+freq_50K.nd               #  frequency file to compare
+0                         #  number of atoms to map - 0 = no map
+... ...                   #  atom_label in ref. structure -> atom_label in comp. structure
+... ...
