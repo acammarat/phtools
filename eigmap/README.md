@@ -48,6 +48,10 @@ $ ./eigmap -h
 
 After the execution the files eigmap.txt and eigscal.txt are created. The header of the file contains information about the content.
 
+## Note
+
+At the moment, the code works only for eigenvectors at Gamma.
+
 ## Example
 
 The folder example contains the necessary files to test the code. The *eigmap.inp* file is an example of input file. The *.ascii* files may be used to visualize the phonon displacement pattern with, for example, the [v-sim](https://www.mem-lab.fr/en/Pages/L_SIM/Softwares/V_Sim.aspx) software.
