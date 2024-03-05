@@ -18,18 +18,26 @@ The format of the input file is
 
 
 ```
+ char                       reference POSCAR file
+ int                        number of atomic types in reference
+ char double                atom symbol, mass [amu]
+ char                       reference eigenvector file
+ char                       reference frequency file
+ int int int int            acoustic modes in reference: q, j1, j2, j3
+ char                       comparison POSCAR file
+ int                        number of atomic types in comparison
+ char double                atom symbol, mass [amu]
+ char                       comparison eigenvector file
+ char                       comparison frequency file
+ int int int int            acoustic modes in comparison: q, j1, j2, j3
+ int                        number of atoms to map
+ int int                    atom_label in ref. structure -> atom_label in comp. structure
+ ... ...
 
-string                  reference eigenvector file
-string                  reference frequency file
-string                  eigenvector file to compare
-string                  frequency file to compare
-int                   number of atoms to remap
-int int               atom_label in ref. structure -> atom_label in comp. structure
- ...
 
 ```
 
-where `int` is an integer number and `string` a string of type char. The command line syntax can be shown by using the `-h` option:
+The command line syntax can be shown by using the `-h` option:
 
 ```
 
@@ -40,7 +48,7 @@ $ ./eigmap -h
  |  __/ | (_| | | | | | | (_| | |_) |  
   \___|_|\__, |_| |_| |_|\__,_| .__/   
          |___/                |_|      
-                              2.2
+                              2.3
 
  Syntax: eigmap <setting file>
 
