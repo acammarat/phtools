@@ -33,15 +33,23 @@
 subroutine init
   use String_mod, only: String_type
   use functions, only: i2a
-  use var, only: qmatndref, freqndref, qmatndcomp, freqndcomp, &
-                 atmap, nq, atoms_ref
+  use var, only: qmatnd_ref, freqnd_ref, qmatnd_comp, freqnd_comp, atmap, &
+                 nq_ref, atoms_UC_ref, natoms_UC_ref, &
+                 pos_eq_UC_ref, qgm_ref, mass_UC_ref, &
+                 side_eq_UC_ref, &
+                 nq_comp, atoms_UC_comp, natoms_UC_comp, &
+                 pos_eq_UC_comp, qgm_comp, mass_UC_comp, &
+                 side_eq_UC_comp, &
+                 fu_mul
 
   implicit none
-  integer :: i, j, k, natmap
-  character(256) :: infile
-  type(String_type) :: filename
+  integer :: i, j, k, natmap, natom_types_ref, natom_types_comp
+  real(8) :: r_tmp, x_tmp, y_tmp, z_tmp
+  real(8), allocatable :: mass_pertype_ref(:), mass_pertype_comp(:)
+  character(2), allocatable :: at_tmp(:), at_pertype_ref(:), at_pertype_comp(:)
+  character(256) :: infile, word
+  character(256) :: pos_ref, pos_comp
   logical :: file_exists, fl_chkunique
-  character(1) :: comment
 
   call show_logo
 
@@ -62,69 +70,250 @@ subroutine init
   open(unit=10,file=infile,action='READ')
   write(*,'(*(a))') ' Reading settings from file: ', trim(infile)
 
-  read(10,'(a)') qmatndref
-  filename%value = trim(qmatndref)
-  filename%Parts = filename%split(filename%value, delim = " ")
-  qmatndref = trim(filename%Parts(1)%record)
-  inquire(file=qmatndref,exist=file_exists)
+  ! reference configuration
+  read(10,*) pos_ref
+  inquire(file=pos_ref,exist=file_exists)
   if ( .not. (file_exists) ) then
-    write(*,'(*(a))') ' ERROR: input file ',trim(qmatndref),' not found.'
+    write(*,'(*(a))') ' ERROR: input file ',trim(pos_ref),' not found.'
     write(*,*)
     stop
   end if
-  write(*,'(*(a))') '  reference eigenvector file: ', trim(qmatndref)
+  write(*,'(*(a))') '  POSCAR reference file: ', trim(pos_ref)
 
-  read(10,'(a)') freqndref
-  filename%value = trim(freqndref)
-  filename%Parts = filename%split(filename%value, delim = " ")
-  freqndref = trim(filename%Parts(1)%record)
-  inquire(file=freqndref,exist=file_exists)
-  if ( .not. (file_exists) ) then
-    write(*,'(*(a))') ' ERROR: input file ',trim(freqndref),' not found.'
+  read(10,*) natom_types_ref
+  write(*,'(*(a))') '  Number of atom types: ',i2a(natom_types_ref)
+
+  allocate ( at_pertype_ref(natom_types_ref), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for at_pertype'
+  allocate ( mass_pertype_ref(natom_types_ref), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for mass_pertype'
+  do i = 1, natom_types_ref
+     read(10,*) at_pertype_ref(i), mass_pertype_ref(i) ! atom symbol, uma
+  end do
+
+  open(unit=15,file=pos_ref,action='READ') 
+  read(15,*)
+  read(15,*) r_tmp
+  if ( abs(r_tmp - 1.d0) > tiny(1.d0) ) then
+    write(*,'(a)') '  ERROR: the scale factor in the reference POSCAR file must be 1.0.'
     write(*,*)
     stop
   end if
-  write(*,'(*(a))') '  reference frequency file: ', trim(freqndref)
+  do i = 1, 3
+    read(15,*) side_eq_UC_ref(i,:) ! Ang
+  end do
+  
+  allocate ( at_tmp(natom_types_ref), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for at_tmp'
+  read(15,*) at_tmp(:) ! atom symbols
+  do i = 1, natom_types_ref
+    if ( at_pertype_ref(i) /= at_tmp(i) ) then
+      write(*,'(a)') '  ERROR: atomic types in the POSCAR file do not match'
+      write(*,'(a)') '         those in the input file.'
+      write(*,*)
+      stop
+    end if
+  end do
 
-  read(10,'(a)') qmatndcomp
-  filename%value = trim(qmatndcomp)
-  filename%Parts = filename%split(filename%value, delim = " ")
-  qmatndcomp = trim(filename%Parts(1)%record)
-  inquire(file=qmatndcomp,exist=file_exists)
+  deallocate ( at_tmp, stat = i )
+  if ( i/=0 ) stop 'Deallocation failed for at_tmp'
+
+  allocate ( natoms_UC_ref(natom_types_ref), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for natoms_uc_ref'
+  read(15,*) natoms_UC_ref(:) ! number of atoms for each type
+
+  atoms_UC_ref = 0
+  do i = 1, natom_types_ref
+     atoms_UC_ref = atoms_UC_ref + natoms_UC_ref(i) ! total number of atoms
+  end do
+  nq_ref = 3 * atoms_UC_ref ! number of degrees of freedom
+
+  allocate ( mass_UC_ref(atoms_UC_ref), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for mass_uc_ref'
+
+  k = 0
+  do i = 1, natom_types_ref
+     do j = 1, natoms_UC_ref(i)
+        k = k + 1
+        mass_UC_ref(k) = mass_pertype_ref(i) ! uma
+     end do
+  end do
+  
+  allocate ( pos_eq_UC_ref(atoms_UC_ref,3), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for pos_eq_uc_ref'
+
+  read(15,*) word
+  do i = 1, atoms_UC_ref
+     read(15,*) pos_eq_UC_ref(i,:) ! Ang or adim
+     if ( word == 'Direct' ) then
+        x_tmp = side_eq_UC_ref(1,1)*pos_eq_UC_ref(i,1) + side_eq_UC_ref(2,1)*pos_eq_UC_ref(i,2) + side_eq_UC_ref(3,1)*pos_eq_UC_ref(i,3)
+        y_tmp = side_eq_UC_ref(1,2)*pos_eq_UC_ref(i,1) + side_eq_UC_ref(2,2)*pos_eq_UC_ref(i,2) + side_eq_UC_ref(3,2)*pos_eq_UC_ref(i,3)
+        z_tmp = side_eq_UC_ref(1,3)*pos_eq_UC_ref(i,1) + side_eq_UC_ref(2,3)*pos_eq_UC_ref(i,2) + side_eq_UC_ref(3,3)*pos_eq_UC_ref(i,3)
+        pos_eq_UC_ref(i,1) = x_tmp
+        pos_eq_UC_ref(i,2) = y_tmp
+        pos_eq_UC_ref(i,3) = z_tmp
+     end if
+  end do
+  close(15)
+
+  read(10,*) qmatnd_ref
+  inquire(file=qmatnd_ref,exist=file_exists)
   if ( .not. (file_exists) ) then
-    write(*,'(*(a))') ' ERROR: input file ',trim(qmatndcomp),' not found.'
+    write(*,'(*(a))') ' ERROR: input file ',trim(qmatnd_ref),' not found.'
     write(*,*)
     stop
   end if
-  write(*,'(*(a))') '  eigenvector file to compare: ', trim(qmatndcomp)
+  write(*,'(*(a))') '  reference eigenvector file: ', trim(qmatnd_ref)
 
-  read(10,'(a)') freqndcomp
-  filename%value = trim(freqndcomp)
-  filename%Parts = filename%split(filename%value, delim = " ")
-  freqndcomp = trim(filename%Parts(1)%record)
-  inquire(file=freqndcomp,exist=file_exists)
+  read(10,*) freqnd_ref
+  inquire(file=freqnd_ref,exist=file_exists)
   if ( .not. (file_exists) ) then
-    write(*,'(*(a))') ' ERROR: input file ',trim(freqndcomp),' not found.'
+    write(*,'(*(a))') ' ERROR: input file ',trim(freqnd_ref),' not found.'
     write(*,*)
     stop
   end if
-  write(*,'(*(a))') '  frequency file to compare: ', trim(freqndcomp)
+  write(*,'(*(a))') '  reference frequency file: ', trim(freqnd_ref)
 
-  open(unit=20,file=freqndref,action='READ')
-  read(20,*)
-  read(20,*) comment, comment , i , comment, i, comment, i, comment, nq
-  close(20)
+  read(10,*) qgm_ref(:)
 
-  atoms_ref = nq/3
-  allocate ( atmap(atoms_ref), stat = i )
+  ! comparison configuration
+  read(10,*) pos_comp
+  inquire(file=pos_comp,exist=file_exists)
+  if ( .not. (file_exists) ) then
+    write(*,'(*(a))') ' ERROR: input file ',trim(pos_comp),' not found.'
+    write(*,*)
+    stop
+  end if
+  write(*,'(*(a))') '  POSCAR comparison file: ', trim(pos_comp)
+
+  read(10,*) natom_types_comp
+  write(*,'(*(a))') '  Number of atom types: ',i2a(natom_types_comp)
+
+  allocate ( at_pertype_comp(natom_types_comp), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for at_pertype_comp'
+  allocate ( mass_pertype_comp(natom_types_comp), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for mass_pertype_comp'
+  do i = 1, natom_types_comp
+     read(10,*) at_pertype_comp(i), mass_pertype_comp(i) ! atom symbol, uma
+  end do
+
+  open(unit=15,file=pos_comp,action='READ') 
+  read(15,*)
+  read(15,*) r_tmp
+  if ( abs(r_tmp - 1.d0) > tiny(1.d0) ) then
+    write(*,'(a)') '  ERROR: the scale factor in the comparison POSCAR file must be 1.0.'
+    write(*,*)
+    stop
+  end if
+  do i = 1, 3
+    read(15,*) side_eq_UC_comp(i,:) ! Ang
+  end do
+  
+  allocate ( at_tmp(natom_types_comp), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for at_tmp'
+  read(15,*) at_tmp(:) ! atom symbols
+  do i = 1, natom_types_comp
+    if ( at_pertype_comp(i) /= at_tmp(i) ) then
+      write(*,'(a)') '  ERROR: atomic types in the POSCAR file do not match'
+      write(*,'(a)') '         those in the input file.'
+      write(*,*)
+      stop
+    end if
+  end do
+
+  deallocate ( at_tmp, stat = i )
+  if ( i/=0 ) stop 'Deallocation failed for at_tmp'
+
+  allocate ( natoms_UC_comp(natom_types_comp), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for natoms_uc_comp'
+  read(15,*) natoms_UC_comp(:) ! number of atoms for each type
+
+  atoms_UC_comp = 0
+  do i = 1, natom_types_comp
+     atoms_UC_comp = atoms_UC_comp + natoms_UC_comp(i) ! total number of atoms
+  end do
+  nq_comp = 3 * atoms_UC_comp ! number of degrees of freedom
+
+  allocate ( mass_UC_comp(atoms_UC_comp), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for mass_uc_comp'
+
+  k = 0
+  do i = 1, natom_types_comp
+     do j = 1, natoms_UC_comp(i)
+        k = k + 1
+        mass_UC_comp(k) = mass_pertype_comp(i) ! uma
+     end do
+  end do
+  
+  allocate ( pos_eq_UC_comp(atoms_UC_comp,3), stat = i )
+  if ( i /= 0 ) stop 'Allocation failed for pos_eq_uc_comp'
+
+  read(15,*) word
+  do i = 1, atoms_UC_comp
+     read(15,*) pos_eq_UC_comp(i,:) ! Ang or adim
+     if ( word == 'Direct' ) then
+        x_tmp = side_eq_UC_comp(1,1)*pos_eq_UC_comp(i,1) + side_eq_UC_comp(2,1)*pos_eq_UC_comp(i,2) + side_eq_UC_comp(3,1)*pos_eq_UC_comp(i,3)
+        y_tmp = side_eq_UC_comp(1,2)*pos_eq_UC_comp(i,1) + side_eq_UC_comp(2,2)*pos_eq_UC_comp(i,2) + side_eq_UC_comp(3,2)*pos_eq_UC_comp(i,3)
+        z_tmp = side_eq_UC_comp(1,3)*pos_eq_UC_comp(i,1) + side_eq_UC_comp(2,3)*pos_eq_UC_comp(i,2) + side_eq_UC_comp(3,3)*pos_eq_UC_comp(i,3)
+        pos_eq_UC_comp(i,1) = x_tmp
+        pos_eq_UC_comp(i,2) = y_tmp
+        pos_eq_UC_comp(i,3) = z_tmp
+     end if
+  end do
+  close(15)
+
+  if ( atoms_UC_comp > atoms_UC_ref ) then
+    if ( mod(atoms_UC_comp, atoms_UC_ref) /= 0 ) then
+      write(*,'(a)') ' ERROR: formula unit in comparison structure is not an integer multiple of the reference one.'
+      write(*,*)
+      stop
+    end if
+    fu_mul = atoms_UC_comp / atoms_UC_ref
+  else if ( atoms_UC_comp < atoms_UC_ref ) then
+    if ( mod(atoms_UC_ref, atoms_UC_comp) /= 0 ) then
+      write(*,'(a)') ' ERROR: formula unit in reference structure is not an integer multiple of the comparison one.'
+      write(*,*)
+      stop
+    end if
+    fu_mul = atoms_UC_ref / atoms_UC_comp
+  else
+    fu_mul = 1
+  end if
+
+  read(10,*) qmatnd_comp
+  inquire(file=qmatnd_comp,exist=file_exists)
+  if ( .not. (file_exists) ) then
+    write(*,'(*(a))') ' ERROR: input file ',trim(qmatnd_comp),' not found.'
+    write(*,*)
+    stop
+  end if
+  write(*,'(*(a))') '  comparison eigenvector file: ', trim(qmatnd_comp)
+
+  read(10,*) freqnd_comp
+  inquire(file=freqnd_comp,exist=file_exists)
+  if ( .not. (file_exists) ) then
+    write(*,'(*(a))') ' ERROR: input file ',trim(freqnd_comp),' not found.'
+    write(*,*)
+    stop
+  end if
+  write(*,'(*(a))') '  comparison frequency file: ', trim(freqnd_comp)
+
+  read(10,*) qgm_comp(:)
+
+  allocate ( atmap(atoms_UC_ref), stat = i )
   if ( i /= 0 ) stop ' ERROR: Allocation failed for atmap'
 
   ! atom map is initialized as the identity
-  do i = 1, atoms_ref
+  do i = 1, atoms_UC_ref
     atmap(i) = i
   end do
 
   read(10,*,iostat=i) natmap
+  if ( natmap /= 0 .and. fu_mul /= 1 ) then
+    write(*,'(a)') ' ERROR: atom mapping allowed only if the two structures have the same number of atoms'
+    write(*,*)
+    stop
+  end if
   if ( natmap > 0 ) then
     write(*,'(a)') '  atom mapping:'
     do i = 1, natmap
@@ -132,12 +321,16 @@ subroutine init
       write(*,'(*(a))') '    ',i2a(j),' -> ',i2a(k)
       atmap(j) = k
     end do
+  else if ( natmap < 0 ) then
+    write(*,'(a)') ' ERROR: the number of atoms to map cannot be negative.'
+    write(*,*)
+    stop
   end if
 
   !check that the mapping is unique
   fl_chkunique = .false.
-  do i = 1, atoms_ref-1
-    do j = i+1, atoms_ref
+  do i = 1, atoms_UC_ref-1
+    do j = i+1, atoms_UC_ref
       if ( atmap(i) == atmap(j) ) then
         write(*,'(*(a))') '  non unique map: ',i2a(i), ' -> ',i2a(atmap(i)),' ; ',i2a(j), ' -> ',i2a(atmap(j))
         fl_chkunique = .true.
@@ -154,6 +347,7 @@ subroutine init
   close(10)
 
   write(*,'(a)') ' done.'
+  write(*,*)
 
   return
 end subroutine init

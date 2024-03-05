@@ -8,10 +8,8 @@
 ! via the scalar product
 !
 ! If used for production, you should cite
-! Phys. Rev. B XX, XXXXX (XXXX)
-! https://doi.org/10.1103/xxx
-! where the formulation is reported in section II "Eigenvector map based on
-! atomic displacements" of the Supplemental Material.
+! https://xxx
+! where the formulation is reported
 !
 !    This file is part of eigmap.
 !
@@ -26,15 +24,23 @@
 !    GNU General Public License for more details.
 !
 !    You should have received a copy of the GNU General Public License
-!    along with phonchar.  If not, see <http://www.gnu.org/licenses/>.
+!    along with eigmap.  If not, see <http://www.gnu.org/licenses/>.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! v 2.3
+! - the scalar product is now based on the phonon contribution to the atom
+!   displacement u_i = m_i^(-1/2) exp(ik.r)eig_i(k,j)
+! - released the condition that the set of eigenvectors of the reference should be
+!   the same as that one of the comparison
+! - the displacement vectors of the comparison structure are rotated by using the
+!   rotation matrix obtained from the acoustic modes (implemented but disabled at the moment)
 !
 ! v 2.2
 ! - fixed a bug in the definition of Euclidean and Hermitian angle
 !
 ! v 2.1
-! - added possibility to map atoms to improve the phonon mapping; mapping is 
+! - added the possibility to map atoms to improve the phonon mapping; mapping is 
 !   specified as
 !   X -> Y
 !   where X is the label of the atom in the reference structure and Y is the atom
@@ -52,12 +58,20 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Format of the input file
 !
-! char                  reference eigenvector file
-! char                  reference frequency file
-! char                  eigenvector file to compare
-! char                  frequency file to compare
-! int                   number of atoms to remap
-! int int               atom_label in ref. structure -> atom_label in comp. structure
+! char                       reference POSCAR file
+! int                        number of atomic types in reference
+! char double                atom symbol, mass [amu]
+! char                       reference eigenvector file
+! char                       reference frequency file
+! int int int int            acoustic modes in reference: q, j1, j2, j3
+! char                       comparison POSCAR file
+! int                        number of atomic types in comparison
+! char double                atom symbol, mass [amu]
+! char                       comparison eigenvector file
+! char                       comparison frequency file
+! int int int int            acoustic modes in comparison: q, j1, j2, j3
+! int                        number of atoms to map
+! int int                    atom_label in ref. structure -> atom_label in comp. structure
 ! ... ...
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -65,18 +79,27 @@
 
 module var
   ! global parameters
-  character(3), parameter :: version='2.2'
+  character(3), parameter :: version='2.3'
   character(6), parameter :: progname = 'EIGMAP'
   real(8), parameter :: pi = acos(-1.d0)
   real(8), parameter :: rad_to_deg = 180.d0/pi
   ! from input files
-  character(256) :: qmatndref, freqndref, qmatndcomp, freqndcomp
-  integer, save :: atoms_ref
-  integer, save, allocatable :: atmap(:)
+  character(256) :: qmatnd_ref, freqnd_ref, qmatnd_comp, freqnd_comp
+  integer, save :: atoms_UC_ref, atoms_UC_comp, fu_mul
+  integer, save :: qgm_ref(4), qgm_comp(4)
+  integer, save, allocatable :: atmap(:), natoms_UC_ref(:), natoms_UC_comp(:)
+  real(8), save :: side_eq_UC_ref(3,3), side_eq_UC_comp(3,3)
+  real(8), save, allocatable :: pos_eq_UC_ref(:,:), pos_eq_UC_comp(:,:), mass_UC_ref(:), mass_UC_comp(:)
   ! from qmatrix_* and freq_*
-  integer, save :: npunique, nq
+  integer, save :: npunique_ref, nq_ref, npunique_comp, nq_comp
+  integer, save :: ncells_vec_ref(3), ncells_vec_comp(3)
   real(8), save, allocatable :: freq_ref(:,:), freq_comp(:,:)
+  real(8), save, allocatable :: vec_ref(:,:), vec_red_ref(:,:), vec_comp(:,:), vec_red_comp(:,:)
   complex(8), save, allocatable :: eig_ref(:,:,:), eig_comp(:,:,:)
+  ! from calc_dot
+  integer, save :: ncells_vec
+  ! from supercell
+  integer, save :: atoms_EC_ref, atoms_EC_comp, ncells_tot
 end module var
 
 module functions
@@ -92,6 +115,81 @@ contains
     out = trim(x)
     
   end function i2a
+
+  ! This subroutine returns the least common multiplier (lcm) of a pair of integers (a,b)
+  integer function lcm ( a, b ) 
+    implicit none
+    integer, intent(in) :: a, b
+    integer :: aa, bb, t, gcd
+    
+    ! This part calculates the greatest common divisor (gcd) of a pair of integers (a,b)
+    aa = a
+    bb = b
+    do while ( bb /= 0 )
+       t = bb
+       bb = mod(aa,bb)
+       aa = t
+    end do
+    gcd = abs(aa)
+    
+    lcm = a * b / gcd
+
+    return
+  end function lcm
+
+  !! This subroutine returns the greatest common divisor (gcd) of a pair of integers (a,b)
+  integer function gcd ( a, b )
+    implicit none
+    integer, intent(in) :: a, b
+    integer :: aa, bb, t
+  
+    aa = a
+    bb = b
+    do while ( bb /= 0 )
+       t = bb
+       bb = mod(aa,bb)
+       aa = t
+    end do
+    gcd = abs(aa)
+  
+    return
+  end function gcd
+
+!  ! https://fortranwiki.org/fortran/show/Matrix+inversion
+!  ! Returns the inverse of a matrix calculated by finding the LU
+!  ! decomposition.  Depends on LAPACK.
+!  function inv(A) result(Ainv)
+!    real(8), dimension(:,:), intent(in) :: A
+!    real(8), dimension(size(A,1),size(A,2)) :: Ainv
+!  
+!    real(8), dimension(size(A,1)) :: work  ! work array for LAPACK
+!    integer, dimension(size(A,1)) :: ipiv   ! pivot indices
+!    integer :: n, info
+!  
+!    ! External procedures defined in LAPACK
+!    external DGETRF
+!    external DGETRI
+!  
+!    ! Store A in Ainv to prevent it from being overwritten by LAPACK
+!    Ainv = A
+!    n = size(A,1)
+!  
+!    ! DGETRF computes an LU factorization of a general M-by-N matrix A
+!    ! using partial pivoting with row interchanges.
+!    call DGETRF(n, n, Ainv, n, ipiv, info)
+!  
+!    if (info /= 0) then
+!       stop 'Matrix is numerically singular!'
+!    end if
+!  
+!    ! DGETRI computes the inverse of a matrix using the LU factorization
+!    ! computed by DGETRF.
+!    call DGETRI(n, Ainv, n, ipiv, work, n, info)
+!  
+!    if (info /= 0) then
+!       stop 'Matrix inversion failed!'
+!    end if
+!  end function inv
 
 end module functions
 
