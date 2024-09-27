@@ -63,6 +63,7 @@ The users of **qpoints** have little formal obligations specified in the [GNU Ge
 However, it is common practice in the scientific literature, to acknowledge the efforts of people that have made the research possible.
 In this spirit, please cite
 
-A. Cammarata, M. Dasic and P. Nicolini, *Normal Dynamics: solving Newton’s equations of motion in the reciprocal space*, DOI:
-<!--- [https://dx.doi.org/10.2139/ssrn.4550608](https://dx.doi.org/10.2139/ssrn.4550608) --->
+A. Cammarata, M. Dasic and P. Nicolini, *Integrating Newton's equations of motion in the reciprocal space*, Journal of Chemical Physics, **161**, 084111 (2024) DOI: [10.1063/5.0224108](https://doi.org/10.1063/5.0224108)
+
+where the formulation used to perform normal dynamics is reported.
 
