@@ -73,5 +73,5 @@ The folder example contains the necessary files to test the code. The *eigmap.in
 
 A. Cammarata, M. Dasic and P. Nicolini, *Integrating Newton's equations of motion in the reciprocal space*, Journal of Chemical Physics, **161**, 084111 (2024) DOI: [10.1063/5.0224108](https://doi.org/10.1063/5.0224108)
 
-where the formulation used to perform normal dynamics is reported.
+where the formulation is reported.
 
