@@ -58,6 +58,7 @@ python3 avgpos.py
 - `--labels`: Include atom labels (element+ID, e.g., Se2, Ti4) in output and plot (requires `-o`)
 - `--replicate`: Replicate the plot along e and f axes (format: "ne,nf", default: "1,1")
   - Supports non-integer replication (e.g., "2.5,3" for 2.5x3 replication)
+- `--no-circles`: Hide circles representing atom positions in the plot (only effective when `--labels` is not used)
 
 ### Examples
 
@@ -104,6 +105,13 @@ Generate heatmap with 2.5x3 replication along e and f axes:
 ./avgpos.py POSCAR -s Se -d z -o projections.dat --plot --replicate 2.5,3
 # Then run: python3 projections_plot.py
 # Plot will show 2.5 replications along e-axis and 3 along f-axis
+```
+
+Generate smooth heatmap without atom position circles:
+```bash
+./avgpos.py POSCAR -s Se -d z -o projections.dat --plot --no-circles
+# Then run: python3 projections_plot.py
+# Plot will show only the smooth interpolated surface without circles
 ```
 
 ## Output

@@ -227,7 +227,7 @@ def get_atom_labels(structure, atom_indices):
     return labels
 
 
-def generate_plot_script(data_file, script_file, output_image='heatmap.png', with_labels=False, replicate=(1, 1)):
+def generate_plot_script(data_file, script_file, output_image='heatmap.png', with_labels=False, replicate=(1, 1), no_circles=False):
     """
     Generate a Python script using matplotlib to plot the plane projection data as a heatmap.
     
@@ -243,6 +243,8 @@ def generate_plot_script(data_file, script_file, output_image='heatmap.png', wit
         Whether to include atom labels in the plot
     replicate : tuple
         Number of replications along e and f axes (ne, nf)
+    no_circles : bool
+        Whether to hide the circles representing atom positions (only when labels are not used)
     """
     script_content = f"""#!/usr/bin/env python3
 \"\"\"
@@ -345,11 +347,17 @@ fig, ax = plt.subplots(figsize=(10, 8))
 # Create smooth heatmap using pcolormesh with RGB gradient (jet colormap)
 # Use the same vmin/vmax as the scatter plot for consistent colors
 heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='jet', shading='auto', vmin=vmin, vmax=vmax)
-
+"""
+    
+    # Add scatter points conditionally
+    if with_labels or not no_circles:
+        script_content += f"""
 # Overlay the original data points with their EXACT g values colored
 # This ensures atomic positions correspond to the real g value from the data file
 scatter = ax.scatter(e, f, c=g, cmap='jet', s=150, edgecolors='black', linewidths=2, zorder=10, vmin=vmin, vmax=vmax)
-
+"""
+    
+    script_content += f"""
 # Add colorbar with height matching the plot
 divider = make_axes_locatable(ax)
 cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -503,6 +511,8 @@ Examples:
                         help='Include atom labels (element+ID) in output and plot (requires -o)')
     parser.add_argument('--replicate', type=str, default='1,1',
                         help='Replicate the plot along e and f axes (format: "ne,nf", e.g., "2.5,3" for 2.5x3 replication)')
+    parser.add_argument('--no-circles', action='store_true',
+                        help='Hide circles representing atom positions in the plot (only when --labels is not used)')
     
     args = parser.parse_args()
     
@@ -627,7 +637,7 @@ Examples:
                 replicate = (1, 1)
             
             # Generate the plotting script
-            generate_plot_script(args.output, script_file, image_file, args.labels, replicate)
+            generate_plot_script(args.output, script_file, image_file, args.labels, replicate, args.no_circles)
             
             print()
             print(f"Matplotlib plotting script generated: {script_file}")
@@ -637,6 +647,8 @@ Examples:
                 print(f"  (with atom labels)")
             if replicate != (1, 1):
                 print(f"  (with {replicate[0]}x{replicate[1]} replication)")
+            if args.no_circles and not args.labels:
+                print(f"  (without atom position circles)")
     elif args.plot or args.labels:
         print()
         print("Warning: --plot and --labels flags require -o/--output to be specified. Ignoring.")
