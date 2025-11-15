@@ -194,7 +194,7 @@ def calculate_average_position(structure, atom_indices, direction_vector):
 
 def get_atom_labels(structure, atom_indices):
     """
-    Generate atom labels with element type and unique ID for selected atoms.
+    Generate atom labels with element type and POSCAR file ID for selected atoms.
     
     Parameters:
     -----------
@@ -205,7 +205,8 @@ def get_atom_labels(structure, atom_indices):
         
     Returns:
     --------
-    list : List of atom labels (e.g., ['Ti1', 'Ti2', 'O1', 'O2'])
+    list : List of atom labels (e.g., ['Ti1', 'Ti2', 'O3', 'O4'])
+        where the number corresponds to the atom's position in the POSCAR file (1-based)
     """
     labels = []
     
@@ -217,14 +218,11 @@ def get_atom_labels(structure, atom_indices):
         atom_to_element.extend([element] * count)
         idx += count
     
-    # Count occurrences of each element type among selected atoms
-    element_counters = {}
+    # Use the POSCAR file index (1-based) as the atom ID
     for atom_idx in atom_indices:
         element = atom_to_element[atom_idx]
-        if element not in element_counters:
-            element_counters[element] = 0
-        element_counters[element] += 1
-        labels.append(f"{element}{element_counters[element]}")
+        # atom_idx is 0-based, so add 1 to get POSCAR file position
+        labels.append(f"{element}{atom_idx + 1}")
     
     return labels
 
@@ -265,6 +263,9 @@ set title "Atomic Projections on Plane - Heatmap with Labels"
 # Grid and style
 set grid
 set size ratio -1  # Equal aspect ratio for x and y axes
+
+# Set autoscale to ensure proper range calculation
+set autoscale
 
 # Plot the data with labels
 # Column 1: e, Column 2: f, Column 3: g (color), Column 4: label
