@@ -278,51 +278,49 @@ e_grid = np.linspace(e_min - padding_e, e_max + padding_e, 200)
 f_grid = np.linspace(f_min - padding_f, f_max + padding_f, 200)
 e_mesh, f_mesh = np.meshgrid(e_grid, f_grid)
 
-# Use Radial Basis Function interpolation which handles duplicate points well
-# Try multiquadric first (smooth), fall back to linear if needed
+# Use Radial Basis Function interpolation with minimal smoothing
+# This passes very close to data points while handling duplicates
 try:
-    rbf = Rbf(e, f, g, function='multiquadric', smooth=0.1)
+    rbf = Rbf(e, f, g, function='thin_plate', smooth=0.001)
     g_interp = rbf(e_mesh, f_mesh)
 except:
-    # Fall back to thin_plate interpolation
+    # Fall back to multiquadric if thin_plate fails
     try:
-        rbf = Rbf(e, f, g, function='thin_plate', smooth=0.1)
+        rbf = Rbf(e, f, g, function='multiquadric', smooth=0.01)
         g_interp = rbf(e_mesh, f_mesh)
     except:
-        # Last resort: use linear
-        rbf = Rbf(e, f, g, function='linear')
+        # Last resort: use linear with small smoothing
+        rbf = Rbf(e, f, g, function='linear', smooth=0.01)
         g_interp = rbf(e_mesh, f_mesh)
 
 # Create figure and axis
 fig, ax = plt.subplots(figsize=(10, 8))
 
-# Create smooth heatmap using pcolormesh
-heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='coolwarm', shading='auto')
+# Create smooth heatmap using pcolormesh with RGB gradient (jet colormap)
+heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='jet', shading='auto')
 
-# Overlay the original data points
-ax.scatter(e, f, c='black', s=50, edgecolors='white', linewidths=1, zorder=10, alpha=0.7)
+# Overlay the original data points with their EXACT g values colored
+# This ensures atomic positions correspond to the real g value
+scatter = ax.scatter(e, f, c=g, cmap='jet', s=150, edgecolors='black', linewidths=2, zorder=10, vmin=g_interp.min(), vmax=g_interp.max())
 
 # Add colorbar
 cbar = plt.colorbar(heatmap, ax=ax)
 cbar.set_label('g: Distance from plane (Å)', fontsize=12)
 
-# Set labels and title
-ax.set_xlabel('e: First plane coordinate (Å)', fontsize=12)
-ax.set_ylabel('f: Second plane coordinate (Å)', fontsize=12)
+# Set simplified labels (no title)
+ax.set_xlabel('x', fontsize=12)
+ax.set_ylabel('y', fontsize=12)
 """
     
     if with_labels:
-        script_content += f"""ax.set_title('Atomic Projections on Plane - Heatmap with Labels', fontsize=14)
-
+        script_content += f"""
 # Add atom labels
 labels = data[:, 3]
 for i in range(len(e)):
     ax.annotate(labels[i], (e[i], f[i]), 
                 xytext=(5, 5), textcoords='offset points',
-                fontsize=10, fontweight='bold')
-"""
-    else:
-        script_content += """ax.set_title('Atomic Projections on Plane - Heatmap', fontsize=14)
+                fontsize=10, fontweight='bold', color='black',
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='black', alpha=0.7))
 """
     
     script_content += f"""
