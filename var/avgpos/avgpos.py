@@ -308,18 +308,12 @@ if has_labels:
     labels = np.concatenate(labels_list)
 
 # Create a regular grid for interpolation
-# Determine the range of e and f with some padding
+# Determine the range of e and f
 e_min, e_max = e.min(), e.max()
 f_min, f_max = f.min(), f.max()
 
-# Add padding to ensure coverage (10% on each side)
-e_range = e_max - e_min
-f_range = f_max - f_min
-padding_e = max(0.1 * e_range, 0.5) if e_range > 0 else 0.5
-padding_f = max(0.1 * f_range, 0.5) if f_range > 0 else 0.5
-
-e_grid = np.linspace(e_min - padding_e, e_max + padding_e, 200)
-f_grid = np.linspace(f_min - padding_f, f_max + padding_f, 200)
+e_grid = np.linspace(e_min, e_max, 200)
+f_grid = np.linspace(f_min, f_max, 200)
 e_mesh, f_mesh = np.meshgrid(e_grid, f_grid)
 
 # Use Radial Basis Function interpolation with very small smoothing
