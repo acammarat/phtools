@@ -265,11 +265,16 @@ e_orig = data[:, 0].astype(float)
 f_orig = data[:, 1].astype(float)
 g_orig = data[:, 2].astype(float)
 
+# Extract labels if present (4th column)
+has_labels = data.shape[1] > 3
+if has_labels:
+    labels_orig = data[:, 3]
+
 # Replication parameters
 ne_rep, nf_rep = {replicate[0]}, {replicate[1]}
 
 # Replicate data along e and f axes
-e_list, f_list, g_list = [], [], []
+e_list, f_list, g_list, labels_list = [], [], [], []
 e_range_orig = e_orig.max() - e_orig.min() if len(e_orig) > 1 else 1.0
 f_range_orig = f_orig.max() - f_orig.min() if len(f_orig) > 1 else 1.0
 
@@ -290,10 +295,14 @@ for ie in range(ne_full):
             e_list.append(e_orig + e_shift)
             f_list.append(f_orig + f_shift)
             g_list.append(g_orig)
+            if has_labels:
+                labels_list.append(labels_orig)
 
 e = np.concatenate(e_list)
 f = np.concatenate(f_list)
 g = np.concatenate(g_list)
+if has_labels:
+    labels = np.concatenate(labels_list)
 
 # Create a regular grid for interpolation
 # Determine the range of e and f with some padding
@@ -310,19 +319,20 @@ e_grid = np.linspace(e_min - padding_e, e_max + padding_e, 200)
 f_grid = np.linspace(f_min - padding_f, f_max + padding_f, 200)
 e_mesh, f_mesh = np.meshgrid(e_grid, f_grid)
 
-# Use Radial Basis Function interpolation with minimal smoothing
-# This passes very close to data points while handling duplicates
+# Use Radial Basis Function interpolation with very small smoothing
+# This ensures interpolation passes extremely close to data points while handling duplicates
+# smooth value is set to a tiny value to get nearly exact values at data points
 try:
-    rbf = Rbf(e, f, g, function='thin_plate', smooth=0.001)
+    rbf = Rbf(e, f, g, function='thin_plate', smooth=1e-10)
     g_interp = rbf(e_mesh, f_mesh)
 except:
     # Fall back to multiquadric if thin_plate fails
     try:
-        rbf = Rbf(e, f, g, function='multiquadric', smooth=0.01)
+        rbf = Rbf(e, f, g, function='multiquadric', smooth=1e-10)
         g_interp = rbf(e_mesh, f_mesh)
     except:
         # Last resort: use linear with small smoothing
-        rbf = Rbf(e, f, g, function='linear', smooth=0.01)
+        rbf = Rbf(e, f, g, function='linear', smooth=1e-8)
         g_interp = rbf(e_mesh, f_mesh)
 
 # Determine color range from actual data values (not interpolated)
@@ -341,22 +351,22 @@ scatter = ax.scatter(e, f, c=g, cmap='jet', s=150, edgecolors='black', linewidth
 
 # Add colorbar
 cbar = plt.colorbar(heatmap, ax=ax)
-cbar.set_label('g: Distance from plane (Å)', fontsize=12)
+cbar.set_label('Distance from plane (Å)', fontsize=12)
 
-# Set simplified labels (no title)
-ax.set_xlabel('x', fontsize=12)
-ax.set_ylabel('y', fontsize=12)
+# Set axis labels with units
+ax.set_xlabel('x (Å)', fontsize=12)
+ax.set_ylabel('y (Å)', fontsize=12)
 """
     
     if with_labels:
         script_content += f"""
-# Add atom labels
-labels = data[:, 3]
-for i in range(len(e)):
-    ax.annotate(labels[i], (e[i], f[i]), 
-                xytext=(5, 5), textcoords='offset points',
-                fontsize=10, fontweight='bold', color='black',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='black', alpha=0.7))
+# Add atom labels (already replicated above if needed)
+if has_labels:
+    for i in range(len(e)):
+        ax.annotate(labels[i], (e[i], f[i]), 
+                    xytext=(5, 5), textcoords='offset points',
+                    fontsize=10, fontweight='bold', color='black',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='black', alpha=0.7))
 """
     
     script_content += f"""
