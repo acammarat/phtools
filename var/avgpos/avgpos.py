@@ -227,81 +227,84 @@ def get_atom_labels(structure, atom_indices):
     return labels
 
 
-def generate_gnuplot_script(data_file, script_file, output_image='heatmap.png', labels_file=None):
+def generate_plot_script(data_file, script_file, output_image='heatmap.png', with_labels=False):
     """
-    Generate a gnuplot script to plot the plane projection data as a heatmap.
+    Generate a Python script using matplotlib to plot the plane projection data as a heatmap.
     
     Parameters:
     -----------
     data_file : str
         Path to the data file containing projection data
     script_file : str
-        Path where the gnuplot script will be written
+        Path where the Python plotting script will be written
     output_image : str
         Name of the output image file (default: 'heatmap.png')
-    labels_file : str, optional
-        Path to the file containing atom labels
+    with_labels : bool
+        Whether to include atom labels in the plot
     """
-    if labels_file:
-        # Plot with labels
-        script_content = f"""#!/usr/bin/gnuplot
-# Gnuplot script to visualize plane projection data as a heatmap with atom labels
-# Usage: gnuplot {script_file}
+    script_content = f"""#!/usr/bin/env python3
+\"\"\"
+Matplotlib script to visualize plane projection data as a heatmap.
+Generated automatically by avgpos tool.
 
-set terminal pngcairo enhanced size 800,600 font 'Arial,12'
-set output '{output_image}'
+Usage: python3 {script_file}
+\"\"\"
 
-# Set RGB gradient color palette
-set palette rgbformulae 33,13,10
-set cblabel "g: Distance from plane (Å)"
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
-# Labels
-set xlabel "e: First plane coordinate (Å)"
-set ylabel "f: Second plane coordinate (Å)"
-set title "Atomic Projections on Plane - Heatmap with Labels"
+# Read data from file
+data = np.loadtxt('{data_file}', dtype=str)
 
-# Grid and style
-set grid
-set size ratio -1  # Equal aspect ratio for x and y axes
+# Extract coordinates and g values
+e = data[:, 0].astype(float)
+f = data[:, 1].astype(float)
+g = data[:, 2].astype(float)
 
-# Set autoscale to ensure proper range calculation
-set autoscale
+# Create figure and axis
+fig, ax = plt.subplots(figsize=(10, 8))
 
-# Plot the data with labels
-# Column 1: e, Column 2: f, Column 3: g (color), Column 4: label
-plot '{data_file}' using 1:2:3:4 with labels point pt 7 ps 2 offset char 1,1 palette
+# Create scatter plot with color mapping
+scatter = ax.scatter(e, f, c=g, cmap='coolwarm', s=200, edgecolors='black', linewidths=1.5)
 
-print "Plot saved to {output_image}"
+# Add colorbar
+cbar = plt.colorbar(scatter, ax=ax)
+cbar.set_label('g: Distance from plane (Å)', fontsize=12)
+
+# Set labels and title
+ax.set_xlabel('e: First plane coordinate (Å)', fontsize=12)
+ax.set_ylabel('f: Second plane coordinate (Å)', fontsize=12)
+"""
+    
+    if with_labels:
+        script_content += f"""ax.set_title('Atomic Projections on Plane - Heatmap with Labels', fontsize=14)
+
+# Add atom labels
+labels = data[:, 3]
+for i in range(len(e)):
+    ax.annotate(labels[i], (e[i], f[i]), 
+                xytext=(5, 5), textcoords='offset points',
+                fontsize=10, fontweight='bold')
 """
     else:
-        # Plot without labels
-        script_content = f"""#!/usr/bin/gnuplot
-# Gnuplot script to visualize plane projection data as a heatmap
-# Usage: gnuplot {script_file}
+        script_content += """ax.set_title('Atomic Projections on Plane - Heatmap', fontsize=14)
+"""
+    
+    script_content += f"""
+# Add grid
+ax.grid(True, alpha=0.3)
 
-set terminal pngcairo enhanced size 800,600 font 'Arial,12'
-set output '{output_image}'
+# Set equal aspect ratio
+ax.set_aspect('equal', adjustable='box')
 
-# Set RGB gradient color palette
-set palette rgbformulae 33,13,10
-set cblabel "g: Distance from plane (Å)"
+# Save figure
+plt.tight_layout()
+plt.savefig('{output_image}', dpi=150, bbox_inches='tight')
+print(f"Plot saved to {output_image}")
 
-# Labels
-set xlabel "e: First plane coordinate (Å)"
-set ylabel "f: Second plane coordinate (Å)"
-set title "Atomic Projections on Plane - Heatmap"
-
-# Grid and style
-set grid
-set size ratio -1  # Equal aspect ratio for x and y axes
-
-# Plot the data
-# Column 1: e, Column 2: f, Column 3: g (color)
-plot '{data_file}' using 1:2:3 with points pt 7 ps 2 palette notitle
-
-# Alternative: To plot with atom labels, use the --labels option when generating the script
-
-print "Plot saved to {output_image}"
+# Optionally display the plot (comment out if running headless)
+# plt.show()
 """
     
     with open(script_file, 'w') as f:
@@ -413,10 +416,10 @@ Examples:
                              'or [h,k,l] (Miller indices)')
     parser.add_argument('-o', '--output', type=str,
                         help='Output file for plane projection data (3 columns: e, f, g)')
-    parser.add_argument('--gnuplot', action='store_true',
-                        help='Generate gnuplot script for heatmap visualization (requires -o)')
+    parser.add_argument('--plot', action='store_true',
+                        help='Generate Python matplotlib script for heatmap visualization (requires -o)')
     parser.add_argument('--labels', action='store_true',
-                        help='Include atom labels (element+ID) in output and gnuplot script (requires -o)')
+                        help='Include atom labels (element+ID) in output and plot (requires -o)')
     
     args = parser.parse_args()
     
@@ -522,27 +525,26 @@ Examples:
         print(f"  e, f: 2D coordinates of atom projection on plane")
         print(f"  g: signed distance from plane (average_position - atom_distance)")
         
-        # Generate gnuplot script if requested
-        if args.gnuplot:
+        # Generate matplotlib plot script if requested
+        if args.plot:
             import os
             # Determine output paths
             base_name = os.path.splitext(args.output)[0]
-            script_file = f"{base_name}.gnuplot"
+            script_file = f"{base_name}_plot.py"
             image_file = f"{base_name}_heatmap.png"
             
-            # Pass labels_file parameter if labels were requested
-            labels_file = args.output if args.labels else None
-            generate_gnuplot_script(args.output, script_file, image_file, labels_file)
+            # Generate the plotting script
+            generate_plot_script(args.output, script_file, image_file, args.labels)
             
             print()
-            print(f"Gnuplot script generated: {script_file}")
-            print(f"To create the heatmap, run: gnuplot {script_file}")
+            print(f"Matplotlib plotting script generated: {script_file}")
+            print(f"To create the heatmap, run: python3 {script_file}")
             print(f"Output image will be: {image_file}")
             if args.labels:
                 print(f"  (with atom labels)")
-    elif args.gnuplot or args.labels:
+    elif args.plot or args.labels:
         print()
-        print("Warning: --gnuplot and --labels flags require -o/--output to be specified. Ignoring.")
+        print("Warning: --plot and --labels flags require -o/--output to be specified. Ignoring.")
     
     return 0
 

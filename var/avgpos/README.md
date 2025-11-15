@@ -18,6 +18,7 @@ A tool to calculate the average position and standard deviation of selected atom
 
 - Python 3.6 or higher
 - NumPy
+- Matplotlib (for generating heatmap visualizations)
 
 ## Installation
 
@@ -52,8 +53,8 @@ python3 avgpos.py
   - Lattice vectors: `a`, `b`, `c`
   - Miller indices: `[h,k,l]` (e.g., `[1,1,0]`)
 - `-o, --output`: Output file for plane projection data (optional)
-- `--gnuplot`: Generate gnuplot script for heatmap visualization (requires `-o`)
-- `--labels`: Include atom labels (element+ID, e.g., Ti1, O2) in output and gnuplot visualization (requires `-o`)
+- `--plot`: Generate Python matplotlib script for heatmap visualization (requires `-o`)
+- `--labels`: Include atom labels (element+ID, e.g., Se2, Ti4) in output and plot (requires `-o`)
 
 ### Examples
 
@@ -82,17 +83,17 @@ Calculate average position and export plane projection data:
 ./avgpos.py POSCAR -s Se -d z -o projections.dat
 ```
 
-Calculate average position and generate gnuplot heatmap script:
+Calculate average position and generate matplotlib heatmap script:
 ```bash
-./avgpos.py POSCAR -s Se -d z -o projections.dat --gnuplot
-# Then run: gnuplot projections.gnuplot
+./avgpos.py POSCAR -s Se -d z -o projections.dat --plot
+# Then run: python3 projections_plot.py
 ```
 
 Calculate average position with atom labels and generate labeled heatmap:
 ```bash
-./avgpos.py POSCAR -s Se -d z -o projections.dat --gnuplot --labels
-# Then run: gnuplot projections.gnuplot
-# Labels will show atom type and ID (e.g., Se1, Se2, Ti1)
+./avgpos.py POSCAR -s Se -d z -o projections.dat --plot --labels
+# Then run: python3 projections_plot.py
+# Labels will show atom type and POSCAR file ID (e.g., Se2, Se3, Ti1)
 ```
 
 ## Output
@@ -117,16 +118,16 @@ When the `-o` option is specified, the tool generates a data file containing:
 
 The plane is perpendicular to the specified direction vector and passes through the calculated average position. The e and f coordinates form an orthonormal 2D coordinate system in the plane.
 
-### Gnuplot Script (optional)
+### Matplotlib Plotting Script (optional)
 
-When the `--gnuplot` flag is used along with `-o`, the tool generates a gnuplot script that creates a heatmap visualization of the plane projection data:
-- **Script file**: Named as `<output_basename>.gnuplot`
+When the `--plot` flag is used along with `-o`, the tool generates a Python script using matplotlib that creates a heatmap visualization of the plane projection data:
+- **Script file**: Named as `<output_basename>_plot.py`
 - **Output image**: Named as `<output_basename>_heatmap.png`
-- The heatmap uses the e and f coordinates as x and y positions, with g values represented by an RGB gradient color
-- When `--labels` is also used, atom labels (element+ID) are displayed on the plot
-- To generate the plot, run: `gnuplot <script_file>`
+- The heatmap uses the e and f coordinates as x and y positions, with g values represented by a color gradient
+- When `--labels` is also used, atom labels (element+POSCAR file ID) are displayed on the plot
+- To generate the plot, run: `python3 <script_file>`
 
-**Requirements**: Gnuplot must be installed on your system to generate the visualization.
+**Requirements**: Matplotlib must be installed on your system to generate the visualization.
 
 ## Example Output
 
