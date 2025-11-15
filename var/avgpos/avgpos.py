@@ -192,6 +192,60 @@ def calculate_average_position(structure, atom_indices, direction_vector):
     return average, std_dev, positions_along_dir
 
 
+def generate_gnuplot_script(data_file, script_file, output_image='heatmap.png'):
+    """
+    Generate a gnuplot script to plot the plane projection data as a heatmap.
+    
+    Parameters:
+    -----------
+    data_file : str
+        Path to the data file containing projection data
+    script_file : str
+        Path where the gnuplot script will be written
+    output_image : str
+        Name of the output image file (default: 'heatmap.png')
+    """
+    script_content = f"""#!/usr/bin/gnuplot
+# Gnuplot script to visualize plane projection data as a heatmap
+# Usage: gnuplot {script_file}
+
+set terminal pngcairo enhanced size 800,600 font 'Arial,12'
+set output '{output_image}'
+
+# Set color palette
+set palette defined (0 "blue", 0.5 "white", 1 "red")
+set cblabel "g: Distance from plane (Å)"
+
+# Labels
+set xlabel "e: First plane coordinate (Å)"
+set ylabel "f: Second plane coordinate (Å)"
+set title "Atomic Projections on Plane - Heatmap"
+
+# Grid and style
+set grid
+set size ratio -1  # Equal aspect ratio for x and y axes
+
+# Plot the data
+# Column 1: e, Column 2: f, Column 3: g (color)
+plot '{data_file}' using 1:2:3 with points pt 7 ps 2 palette notitle
+
+# Alternative: If you want to see point labels (atom numbers), uncomment:
+# plot '{data_file}' using 1:2:3:(sprintf("%d", \\$0+1)) with labels point pt 7 offset char 1,1 palette notitle
+
+print "Plot saved to {output_image}"
+"""
+    
+    with open(script_file, 'w') as f:
+        f.write(script_content)
+    
+    # Make the script executable (Unix-like systems)
+    import os
+    try:
+        os.chmod(script_file, 0o755)
+    except:
+        pass  # Ignore if chmod fails (e.g., on Windows)
+
+
 def calculate_plane_projections(structure, atom_indices, direction_vector, average_position):
     """
     Calculate orthogonal projections of atoms onto a plane perpendicular to 
@@ -290,6 +344,8 @@ Examples:
                              'or [h,k,l] (Miller indices)')
     parser.add_argument('-o', '--output', type=str,
                         help='Output file for plane projection data (3 columns: e, f, g)')
+    parser.add_argument('--gnuplot', action='store_true',
+                        help='Generate gnuplot script for heatmap visualization (requires -o)')
     
     args = parser.parse_args()
     
@@ -375,6 +431,24 @@ Examples:
         print(f"  Columns: e, f, g")
         print(f"  e, f: 2D coordinates of atom projection on plane")
         print(f"  g: signed distance from plane (average_position - atom_distance)")
+        
+        # Generate gnuplot script if requested
+        if args.gnuplot:
+            import os
+            # Determine output paths
+            base_name = os.path.splitext(args.output)[0]
+            script_file = f"{base_name}.gnuplot"
+            image_file = f"{base_name}_heatmap.png"
+            
+            generate_gnuplot_script(args.output, script_file, image_file)
+            
+            print()
+            print(f"Gnuplot script generated: {script_file}")
+            print(f"To create the heatmap, run: gnuplot {script_file}")
+            print(f"Output image will be: {image_file}")
+    elif args.gnuplot:
+        print()
+        print("Warning: --gnuplot flag requires -o/--output to be specified. Ignoring.")
     
     return 0
 
