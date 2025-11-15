@@ -212,8 +212,8 @@ def generate_gnuplot_script(data_file, script_file, output_image='heatmap.png'):
 set terminal pngcairo enhanced size 800,600 font 'Arial,12'
 set output '{output_image}'
 
-# Set color palette
-set palette defined (0 "blue", 0.5 "white", 1 "red")
+# Set RGB gradient color palette
+set palette rgbformulae 33,13,10
 set cblabel "g: Distance from plane (Å)"
 
 # Labels
@@ -230,7 +230,7 @@ set size ratio -1  # Equal aspect ratio for x and y axes
 plot '{data_file}' using 1:2:3 with points pt 7 ps 2 palette notitle
 
 # Alternative: If you want to see point labels (atom numbers), uncomment:
-# plot '{data_file}' using 1:2:3:(sprintf("%d", \\$0+1)) with labels point pt 7 offset char 1,1 palette notitle
+# plot '{data_file}' using 1:2:3:(sprintf("%d", $0+1)) with labels point pt 7 offset char 1,1 palette notitle
 
 print "Plot saved to {output_image}"
 """
