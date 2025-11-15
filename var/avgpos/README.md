@@ -56,6 +56,8 @@ python3 avgpos.py
 - `-o, --output`: Output file for plane projection data (optional)
 - `--plot`: Generate Python matplotlib script for heatmap visualization (requires `-o`)
 - `--labels`: Include atom labels (element+ID, e.g., Se2, Ti4) in output and plot (requires `-o`)
+- `--replicate`: Replicate the plot along e and f axes (format: "ne,nf", default: "1,1")
+  - Supports non-integer replication (e.g., "2.5,3" for 2.5x3 replication)
 
 ### Examples
 
@@ -95,6 +97,13 @@ Calculate average position with atom labels and generate labeled heatmap:
 ./avgpos.py POSCAR -s Se -d z -o projections.dat --plot --labels
 # Then run: python3 projections_plot.py
 # Labels will show atom type and POSCAR file ID (e.g., Se2, Se3, Ti1)
+```
+
+Generate heatmap with 2.5x3 replication along e and f axes:
+```bash
+./avgpos.py POSCAR -s Se -d z -o projections.dat --plot --replicate 2.5,3
+# Then run: python3 projections_plot.py
+# Plot will show 2.5 replications along e-axis and 3 along f-axis
 ```
 
 ## Output

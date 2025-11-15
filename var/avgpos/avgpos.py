@@ -227,7 +227,7 @@ def get_atom_labels(structure, atom_indices):
     return labels
 
 
-def generate_plot_script(data_file, script_file, output_image='heatmap.png', with_labels=False):
+def generate_plot_script(data_file, script_file, output_image='heatmap.png', with_labels=False, replicate=(1, 1)):
     """
     Generate a Python script using matplotlib to plot the plane projection data as a heatmap.
     
@@ -241,6 +241,8 @@ def generate_plot_script(data_file, script_file, output_image='heatmap.png', wit
         Name of the output image file (default: 'heatmap.png')
     with_labels : bool
         Whether to include atom labels in the plot
+    replicate : tuple
+        Number of replications along e and f axes (ne, nf)
     """
     script_content = f"""#!/usr/bin/env python3
 \"\"\"
@@ -259,9 +261,39 @@ from scipy.interpolate import Rbf
 data = np.loadtxt('{data_file}', dtype=str)
 
 # Extract coordinates and g values
-e = data[:, 0].astype(float)
-f = data[:, 1].astype(float)
-g = data[:, 2].astype(float)
+e_orig = data[:, 0].astype(float)
+f_orig = data[:, 1].astype(float)
+g_orig = data[:, 2].astype(float)
+
+# Replication parameters
+ne_rep, nf_rep = {replicate[0]}, {replicate[1]}
+
+# Replicate data along e and f axes
+e_list, f_list, g_list = [], [], []
+e_range_orig = e_orig.max() - e_orig.min() if len(e_orig) > 1 else 1.0
+f_range_orig = f_orig.max() - f_orig.min() if len(f_orig) > 1 else 1.0
+
+# Determine how many full and partial replications to make
+ne_full = int(np.ceil(ne_rep))
+nf_full = int(np.ceil(nf_rep))
+
+for ie in range(ne_full):
+    for jf in range(nf_full):
+        # Calculate if this replica is fully or partially included
+        e_factor = min(1.0, ne_rep - ie) if ie < ne_full - 1 else (ne_rep - ie)
+        f_factor = min(1.0, nf_rep - jf) if jf < nf_full - 1 else (nf_rep - jf)
+        
+        # Include this replica if it has non-zero contribution
+        if e_factor > 0 and f_factor > 0:
+            e_shift = ie * (e_range_orig + (e_orig.max() - e_orig.min()))
+            f_shift = jf * (f_range_orig + (f_orig.max() - f_orig.min()))
+            e_list.append(e_orig + e_shift)
+            f_list.append(f_orig + f_shift)
+            g_list.append(g_orig)
+
+e = np.concatenate(e_list)
+f = np.concatenate(f_list)
+g = np.concatenate(g_list)
 
 # Create a regular grid for interpolation
 # Determine the range of e and f with some padding
@@ -293,15 +325,19 @@ except:
         rbf = Rbf(e, f, g, function='linear', smooth=0.01)
         g_interp = rbf(e_mesh, f_mesh)
 
+# Determine color range from actual data values (not interpolated)
+vmin, vmax = g.min(), g.max()
+
 # Create figure and axis
 fig, ax = plt.subplots(figsize=(10, 8))
 
 # Create smooth heatmap using pcolormesh with RGB gradient (jet colormap)
-heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='jet', shading='auto')
+# Use the same vmin/vmax as the scatter plot for consistent colors
+heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='jet', shading='auto', vmin=vmin, vmax=vmax)
 
 # Overlay the original data points with their EXACT g values colored
-# This ensures atomic positions correspond to the real g value
-scatter = ax.scatter(e, f, c=g, cmap='jet', s=150, edgecolors='black', linewidths=2, zorder=10, vmin=g_interp.min(), vmax=g_interp.max())
+# This ensures atomic positions correspond to the real g value from the data file
+scatter = ax.scatter(e, f, c=g, cmap='jet', s=150, edgecolors='black', linewidths=2, zorder=10, vmin=vmin, vmax=vmax)
 
 # Add colorbar
 cbar = plt.colorbar(heatmap, ax=ax)
@@ -452,6 +488,8 @@ Examples:
                         help='Generate Python matplotlib script for heatmap visualization (requires -o)')
     parser.add_argument('--labels', action='store_true',
                         help='Include atom labels (element+ID) in output and plot (requires -o)')
+    parser.add_argument('--replicate', type=str, default='1,1',
+                        help='Replicate the plot along e and f axes (format: "ne,nf", e.g., "2.5,3" for 2.5x3 replication)')
     
     args = parser.parse_args()
     
@@ -565,8 +603,18 @@ Examples:
             script_file = f"{base_name}_plot.py"
             image_file = f"{base_name}_heatmap.png"
             
+            # Parse replication argument
+            try:
+                replicate_parts = args.replicate.split(',')
+                ne_rep = float(replicate_parts[0])
+                nf_rep = float(replicate_parts[1]) if len(replicate_parts) > 1 else ne_rep
+                replicate = (ne_rep, nf_rep)
+            except (ValueError, IndexError):
+                print(f"Warning: Invalid replicate format '{args.replicate}'. Using default 1,1")
+                replicate = (1, 1)
+            
             # Generate the plotting script
-            generate_plot_script(args.output, script_file, image_file, args.labels)
+            generate_plot_script(args.output, script_file, image_file, args.labels, replicate)
             
             print()
             print(f"Matplotlib plotting script generated: {script_file}")
@@ -574,6 +622,8 @@ Examples:
             print(f"Output image will be: {image_file}")
             if args.labels:
                 print(f"  (with atom labels)")
+            if replicate != (1, 1):
+                print(f"  (with {replicate[0]}x{replicate[1]} replication)")
     elif args.plot or args.labels:
         print()
         print("Warning: --plot and --labels flags require -o/--output to be specified. Ignoring.")
