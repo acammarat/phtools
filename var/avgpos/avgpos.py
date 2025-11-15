@@ -256,6 +256,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.interpolate import Rbf
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Read data from file
 data = np.loadtxt('{data_file}', dtype=str)
@@ -349,8 +350,10 @@ heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='jet', shading='auto', vm
 # This ensures atomic positions correspond to the real g value from the data file
 scatter = ax.scatter(e, f, c=g, cmap='jet', s=150, edgecolors='black', linewidths=2, zorder=10, vmin=vmin, vmax=vmax)
 
-# Add colorbar
-cbar = plt.colorbar(heatmap, ax=ax)
+# Add colorbar with height matching the plot
+divider = make_axes_locatable(ax)
+cax = divider.append_axes("right", size="5%", pad=0.1)
+cbar = plt.colorbar(heatmap, cax=cax)
 cbar.set_label('Distance from plane (Å)', fontsize=12)
 
 # Set axis labels with units
