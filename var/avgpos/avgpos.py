@@ -192,6 +192,76 @@ def calculate_average_position(structure, atom_indices, direction_vector):
     return average, std_dev, positions_along_dir
 
 
+def calculate_plane_projections(structure, atom_indices, direction_vector, average_position):
+    """
+    Calculate orthogonal projections of atoms onto a plane perpendicular to 
+    the direction vector and passing through the average position.
+    
+    Parameters:
+    -----------
+    structure : dict
+        Structure dictionary from read_poscar
+    atom_indices : numpy.ndarray
+        Indices of atoms to include in calculation
+    direction_vector : numpy.ndarray
+        Unit vector defining the direction (normal to the plane)
+    average_position : float
+        Average position along the direction (defines plane location)
+        
+    Returns:
+    --------
+    numpy.ndarray : Nx3 array where each row contains [e, f, g]
+        - e, f: 2D coordinates of the projection on the plane
+        - g: average_position minus the distance of the atom from the plane
+    """
+    positions = structure['positions'][atom_indices]
+    
+    # Calculate the distance of each atom along the direction vector
+    distances_along_dir = np.dot(positions, direction_vector)
+    
+    # Calculate the signed distance from each atom to the plane
+    # (positive if atom is on the side of the direction vector, negative otherwise)
+    signed_distances = distances_along_dir - average_position
+    
+    # Project each atom onto the plane
+    # projection = position - (signed_distance * normal_vector)
+    projections_3d = positions - np.outer(signed_distances, direction_vector)
+    
+    # Create an orthonormal basis for the plane
+    # Find two orthogonal vectors in the plane
+    # Start with an arbitrary vector not parallel to direction_vector
+    if abs(direction_vector[2]) < 0.9:
+        arbitrary = np.array([0.0, 0.0, 1.0])
+    else:
+        arbitrary = np.array([1.0, 0.0, 0.0])
+    
+    # First basis vector in the plane (orthogonal to direction_vector)
+    basis1 = arbitrary - np.dot(arbitrary, direction_vector) * direction_vector
+    basis1 = basis1 / np.linalg.norm(basis1)
+    
+    # Second basis vector (orthogonal to both direction_vector and basis1)
+    basis2 = np.cross(direction_vector, basis1)
+    basis2 = basis2 / np.linalg.norm(basis2)
+    
+    # Project the 3D projections onto the 2D plane coordinate system
+    e_coords = np.dot(projections_3d, basis1)
+    f_coords = np.dot(projections_3d, basis2)
+    
+    # Calculate g = average_position - distance_from_plane
+    # The distance from the plane is the absolute value of signed_distances
+    # But we want: average_position - distance_of_atom_from_plane
+    # Since distance_along_dir = average_position + signed_distance
+    # we have: g = average_position - abs(signed_distance) if we want actual distance
+    # But the requirement says: "average_position minus the distance of the atom from the plane"
+    # which could mean: average_position - distance_along_dir = -signed_distances
+    g_coords = -signed_distances
+    
+    # Combine into Nx3 array
+    result = np.column_stack((e_coords, f_coords, g_coords))
+    
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Calculate average position and standard deviation of selected atoms '
@@ -218,6 +288,8 @@ Examples:
     parser.add_argument('-d', '--direction', type=str, required=True,
                         help='Direction: x, y, z (Cartesian) or a, b, c (lattice vectors) '
                              'or [h,k,l] (Miller indices)')
+    parser.add_argument('-o', '--output', type=str,
+                        help='Output file for plane projection data (3 columns: e, f, g)')
     
     args = parser.parse_args()
     
@@ -284,6 +356,25 @@ Examples:
         print("Individual positions along direction:")
         for i, (idx, pos) in enumerate(zip(atom_indices, positions)):
             print(f"  Atom {idx+1}: {pos:.6f} Å")
+    
+    # Calculate and write plane projections if output file is specified
+    if args.output:
+        projections = calculate_plane_projections(
+            structure, atom_indices, direction_vector, average
+        )
+        
+        # Write to file
+        np.savetxt(args.output, projections, fmt='%.6f', 
+                   header='e f g\nProjections onto plane perpendicular to direction vector\n'
+                          'e, f: 2D coordinates on plane\n'
+                          'g: average_position - distance_from_plane',
+                   comments='# ')
+        
+        print()
+        print(f"Plane projection data written to: {args.output}")
+        print(f"  Columns: e, f, g")
+        print(f"  e, f: 2D coordinates of atom projection on plane")
+        print(f"  g: signed distance from plane (average_position - atom_distance)")
     
     return 0
 

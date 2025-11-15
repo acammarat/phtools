@@ -12,6 +12,7 @@ A tool to calculate the average position and standard deviation of selected atom
   - Custom Miller indices [h,k,l]
 - Calculate standard deviation of positions
 - Display individual atomic positions along the selected direction
+- **NEW:** Calculate and export orthogonal projections onto a plane perpendicular to the direction vector
 
 ## Requirements
 
@@ -50,6 +51,7 @@ python3 avgpos.py
   - Cartesian: `x`, `y`, `z`
   - Lattice vectors: `a`, `b`, `c`
   - Miller indices: `[h,k,l]` (e.g., `[1,1,0]`)
+- `-o, --output`: Output file for plane projection data (optional)
 
 ### Examples
 
@@ -73,7 +75,14 @@ Calculate average position of all atoms of multiple elements along x-axis:
 ./avgpos.py POSCAR -s Se,Mo -d x
 ```
 
+Calculate average position and export plane projection data:
+```bash
+./avgpos.py POSCAR -s Se -d z -o projections.dat
+```
+
 ## Output
+
+### Standard Output
 
 The tool displays:
 - Structure information (number and types of atoms)
@@ -82,6 +91,15 @@ The tool displays:
 - Average position along the direction (in Ångströms)
 - Standard deviation (in Ångströms)
 - Individual atomic positions (if 20 or fewer atoms are selected)
+
+### Plane Projection Output File (optional)
+
+When the `-o` option is specified, the tool generates a 3-column data file containing:
+- **Column 1 (e)**: First coordinate of the atom's orthogonal projection onto the plane
+- **Column 2 (f)**: Second coordinate of the atom's orthogonal projection onto the plane  
+- **Column 3 (g)**: Signed distance from the plane (average_position - atom_distance_along_direction)
+
+The plane is perpendicular to the specified direction vector and passes through the calculated average position. The e and f coordinates form an orthonormal 2D coordinate system in the plane.
 
 ## Example Output
 
