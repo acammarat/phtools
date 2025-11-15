@@ -53,6 +53,7 @@ python3 avgpos.py
   - Miller indices: `[h,k,l]` (e.g., `[1,1,0]`)
 - `-o, --output`: Output file for plane projection data (optional)
 - `--gnuplot`: Generate gnuplot script for heatmap visualization (requires `-o`)
+- `--labels`: Include atom labels (element+ID, e.g., Ti1, O2) in output and gnuplot visualization (requires `-o`)
 
 ### Examples
 
@@ -87,6 +88,13 @@ Calculate average position and generate gnuplot heatmap script:
 # Then run: gnuplot projections.gnuplot
 ```
 
+Calculate average position with atom labels and generate labeled heatmap:
+```bash
+./avgpos.py POSCAR -s Se -d z -o projections.dat --gnuplot --labels
+# Then run: gnuplot projections.gnuplot
+# Labels will show atom type and ID (e.g., Se1, Se2, Ti1)
+```
+
 ## Output
 
 ### Standard Output
@@ -101,10 +109,11 @@ The tool displays:
 
 ### Plane Projection Output File (optional)
 
-When the `-o` option is specified, the tool generates a 3-column data file containing:
+When the `-o` option is specified, the tool generates a data file containing:
 - **Column 1 (e)**: First coordinate of the atom's orthogonal projection onto the plane
 - **Column 2 (f)**: Second coordinate of the atom's orthogonal projection onto the plane  
 - **Column 3 (g)**: Signed distance from the plane (average_position - atom_distance_along_direction)
+- **Column 4 (label)**: Atom label with element type and unique ID (e.g., Ti1, O2) - only when `--labels` is used
 
 The plane is perpendicular to the specified direction vector and passes through the calculated average position. The e and f coordinates form an orthonormal 2D coordinate system in the plane.
 
@@ -113,7 +122,8 @@ The plane is perpendicular to the specified direction vector and passes through 
 When the `--gnuplot` flag is used along with `-o`, the tool generates a gnuplot script that creates a heatmap visualization of the plane projection data:
 - **Script file**: Named as `<output_basename>.gnuplot`
 - **Output image**: Named as `<output_basename>_heatmap.png`
-- The heatmap uses the e and f coordinates as x and y positions, with g values represented by color
+- The heatmap uses the e and f coordinates as x and y positions, with g values represented by an RGB gradient color
+- When `--labels` is also used, atom labels (element+ID) are displayed on the plot
 - To generate the plot, run: `gnuplot <script_file>`
 
 **Requirements**: Gnuplot must be installed on your system to generate the visualization.

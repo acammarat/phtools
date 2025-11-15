@@ -192,7 +192,44 @@ def calculate_average_position(structure, atom_indices, direction_vector):
     return average, std_dev, positions_along_dir
 
 
-def generate_gnuplot_script(data_file, script_file, output_image='heatmap.png'):
+def get_atom_labels(structure, atom_indices):
+    """
+    Generate atom labels with element type and unique ID for selected atoms.
+    
+    Parameters:
+    -----------
+    structure : dict
+        Structure dictionary from read_poscar
+    atom_indices : numpy.ndarray
+        Indices of atoms (0-based)
+        
+    Returns:
+    --------
+    list : List of atom labels (e.g., ['Ti1', 'Ti2', 'O1', 'O2'])
+    """
+    labels = []
+    
+    # Create a mapping of atom index to element type
+    idx = 0
+    atom_to_element = []
+    for i, element in enumerate(structure['elements']):
+        count = structure['atom_counts'][i]
+        atom_to_element.extend([element] * count)
+        idx += count
+    
+    # Count occurrences of each element type among selected atoms
+    element_counters = {}
+    for atom_idx in atom_indices:
+        element = atom_to_element[atom_idx]
+        if element not in element_counters:
+            element_counters[element] = 0
+        element_counters[element] += 1
+        labels.append(f"{element}{element_counters[element]}")
+    
+    return labels
+
+
+def generate_gnuplot_script(data_file, script_file, output_image='heatmap.png', labels_file=None):
     """
     Generate a gnuplot script to plot the plane projection data as a heatmap.
     
@@ -204,8 +241,40 @@ def generate_gnuplot_script(data_file, script_file, output_image='heatmap.png'):
         Path where the gnuplot script will be written
     output_image : str
         Name of the output image file (default: 'heatmap.png')
+    labels_file : str, optional
+        Path to the file containing atom labels
     """
-    script_content = f"""#!/usr/bin/gnuplot
+    if labels_file:
+        # Plot with labels
+        script_content = f"""#!/usr/bin/gnuplot
+# Gnuplot script to visualize plane projection data as a heatmap with atom labels
+# Usage: gnuplot {script_file}
+
+set terminal pngcairo enhanced size 800,600 font 'Arial,12'
+set output '{output_image}'
+
+# Set RGB gradient color palette
+set palette rgbformulae 33,13,10
+set cblabel "g: Distance from plane (Å)"
+
+# Labels
+set xlabel "e: First plane coordinate (Å)"
+set ylabel "f: Second plane coordinate (Å)"
+set title "Atomic Projections on Plane - Heatmap with Labels"
+
+# Grid and style
+set grid
+set size ratio -1  # Equal aspect ratio for x and y axes
+
+# Plot the data with labels
+# Column 1: e, Column 2: f, Column 3: g (color), Column 4: label
+plot '{data_file}' using 1:2:3:4 with labels point pt 7 ps 2 offset char 1,1 palette
+
+print "Plot saved to {output_image}"
+"""
+    else:
+        # Plot without labels
+        script_content = f"""#!/usr/bin/gnuplot
 # Gnuplot script to visualize plane projection data as a heatmap
 # Usage: gnuplot {script_file}
 
@@ -229,8 +298,7 @@ set size ratio -1  # Equal aspect ratio for x and y axes
 # Column 1: e, Column 2: f, Column 3: g (color)
 plot '{data_file}' using 1:2:3 with points pt 7 ps 2 palette notitle
 
-# Alternative: If you want to see point labels (atom numbers), uncomment:
-# plot '{data_file}' using 1:2:3:(sprintf("%d", $0+1)) with labels point pt 7 offset char 1,1 palette notitle
+# Alternative: To plot with atom labels, use the --labels option when generating the script
 
 print "Plot saved to {output_image}"
 """
@@ -346,6 +414,8 @@ Examples:
                         help='Output file for plane projection data (3 columns: e, f, g)')
     parser.add_argument('--gnuplot', action='store_true',
                         help='Generate gnuplot script for heatmap visualization (requires -o)')
+    parser.add_argument('--labels', action='store_true',
+                        help='Include atom labels (element+ID) in output and gnuplot script (requires -o)')
     
     args = parser.parse_args()
     
@@ -419,16 +489,35 @@ Examples:
             structure, atom_indices, direction_vector, average
         )
         
-        # Write to file
-        np.savetxt(args.output, projections, fmt='%.6f', 
-                   header='e f g\nProjections onto plane perpendicular to direction vector\n'
-                          'e, f: 2D coordinates on plane\n'
-                          'g: average_position - distance_from_plane',
-                   comments='# ')
+        # Get atom labels if requested
+        if args.labels:
+            labels = get_atom_labels(structure, atom_indices)
+            # Create a combined array with projections and labels
+            # Save with labels as 4th column
+            with open(args.output, 'w') as f:
+                f.write('# e f g label\n')
+                f.write('# Projections onto plane perpendicular to direction vector\n')
+                f.write('# e, f: 2D coordinates on plane\n')
+                f.write('# g: average_position - distance_from_plane\n')
+                f.write('# label: atom type and ID (e.g., Ti1, O2)\n')
+                for i, label in enumerate(labels):
+                    f.write(f"{projections[i, 0]:.6f} {projections[i, 1]:.6f} {projections[i, 2]:.6f} {label}\n")
+            
+            print()
+            print(f"Plane projection data with labels written to: {args.output}")
+            print(f"  Columns: e, f, g, label")
+        else:
+            # Write to file without labels
+            np.savetxt(args.output, projections, fmt='%.6f', 
+                       header='e f g\nProjections onto plane perpendicular to direction vector\n'
+                              'e, f: 2D coordinates on plane\n'
+                              'g: average_position - distance_from_plane',
+                       comments='# ')
+            
+            print()
+            print(f"Plane projection data written to: {args.output}")
+            print(f"  Columns: e, f, g")
         
-        print()
-        print(f"Plane projection data written to: {args.output}")
-        print(f"  Columns: e, f, g")
         print(f"  e, f: 2D coordinates of atom projection on plane")
         print(f"  g: signed distance from plane (average_position - atom_distance)")
         
@@ -440,15 +529,19 @@ Examples:
             script_file = f"{base_name}.gnuplot"
             image_file = f"{base_name}_heatmap.png"
             
-            generate_gnuplot_script(args.output, script_file, image_file)
+            # Pass labels_file parameter if labels were requested
+            labels_file = args.output if args.labels else None
+            generate_gnuplot_script(args.output, script_file, image_file, labels_file)
             
             print()
             print(f"Gnuplot script generated: {script_file}")
             print(f"To create the heatmap, run: gnuplot {script_file}")
             print(f"Output image will be: {image_file}")
-    elif args.gnuplot:
+            if args.labels:
+                print(f"  (with atom labels)")
+    elif args.gnuplot or args.labels:
         print()
-        print("Warning: --gnuplot flag requires -o/--output to be specified. Ignoring.")
+        print("Warning: --gnuplot and --labels flags require -o/--output to be specified. Ignoring.")
     
     return 0
 
