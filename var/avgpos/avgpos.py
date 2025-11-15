@@ -244,7 +244,7 @@ def generate_plot_script(data_file, script_file, output_image='heatmap.png', wit
     """
     script_content = f"""#!/usr/bin/env python3
 \"\"\"
-Matplotlib script to visualize plane projection data as a heatmap.
+Matplotlib script to visualize plane projection data as a smooth interpolated heatmap.
 Generated automatically by avgpos tool.
 
 Usage: python3 {script_file}
@@ -253,6 +253,7 @@ Usage: python3 {script_file}
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from scipy.interpolate import Rbf
 
 # Read data from file
 data = np.loadtxt('{data_file}', dtype=str)
@@ -262,14 +263,47 @@ e = data[:, 0].astype(float)
 f = data[:, 1].astype(float)
 g = data[:, 2].astype(float)
 
+# Create a regular grid for interpolation
+# Determine the range of e and f with some padding
+e_min, e_max = e.min(), e.max()
+f_min, f_max = f.min(), f.max()
+
+# Add padding to ensure coverage (10% on each side)
+e_range = e_max - e_min
+f_range = f_max - f_min
+padding_e = max(0.1 * e_range, 0.5) if e_range > 0 else 0.5
+padding_f = max(0.1 * f_range, 0.5) if f_range > 0 else 0.5
+
+e_grid = np.linspace(e_min - padding_e, e_max + padding_e, 200)
+f_grid = np.linspace(f_min - padding_f, f_max + padding_f, 200)
+e_mesh, f_mesh = np.meshgrid(e_grid, f_grid)
+
+# Use Radial Basis Function interpolation which handles duplicate points well
+# Try multiquadric first (smooth), fall back to linear if needed
+try:
+    rbf = Rbf(e, f, g, function='multiquadric', smooth=0.1)
+    g_interp = rbf(e_mesh, f_mesh)
+except:
+    # Fall back to thin_plate interpolation
+    try:
+        rbf = Rbf(e, f, g, function='thin_plate', smooth=0.1)
+        g_interp = rbf(e_mesh, f_mesh)
+    except:
+        # Last resort: use linear
+        rbf = Rbf(e, f, g, function='linear')
+        g_interp = rbf(e_mesh, f_mesh)
+
 # Create figure and axis
 fig, ax = plt.subplots(figsize=(10, 8))
 
-# Create scatter plot with color mapping
-scatter = ax.scatter(e, f, c=g, cmap='coolwarm', s=200, edgecolors='black', linewidths=1.5)
+# Create smooth heatmap using pcolormesh
+heatmap = ax.pcolormesh(e_mesh, f_mesh, g_interp, cmap='coolwarm', shading='auto')
+
+# Overlay the original data points
+ax.scatter(e, f, c='black', s=50, edgecolors='white', linewidths=1, zorder=10, alpha=0.7)
 
 # Add colorbar
-cbar = plt.colorbar(scatter, ax=ax)
+cbar = plt.colorbar(heatmap, ax=ax)
 cbar.set_label('g: Distance from plane (Å)', fontsize=12)
 
 # Set labels and title

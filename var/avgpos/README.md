@@ -19,6 +19,7 @@ A tool to calculate the average position and standard deviation of selected atom
 - Python 3.6 or higher
 - NumPy
 - Matplotlib (for generating heatmap visualizations)
+- SciPy (for interpolation in smooth heatmaps)
 
 ## Installation
 
@@ -120,14 +121,16 @@ The plane is perpendicular to the specified direction vector and passes through 
 
 ### Matplotlib Plotting Script (optional)
 
-When the `--plot` flag is used along with `-o`, the tool generates a Python script using matplotlib that creates a heatmap visualization of the plane projection data:
+When the `--plot` flag is used along with `-o`, the tool generates a Python script using matplotlib that creates a smooth interpolated heatmap visualization of the plane projection data:
 - **Script file**: Named as `<output_basename>_plot.py`
 - **Output image**: Named as `<output_basename>_heatmap.png`
-- The heatmap uses the e and f coordinates as x and y positions, with g values represented by a color gradient
-- When `--labels` is also used, atom labels (element+POSCAR file ID) are displayed on the plot
+- The heatmap uses Radial Basis Function (RBF) interpolation to create a smooth surface covering the entire e,f range
+- g values are represented by a color gradient (coolwarm colormap)
+- Original data points are overlaid as black dots for reference
+- When `--labels` is also used, atom labels (element+POSCAR file ID) are annotated on the plot
 - To generate the plot, run: `python3 <script_file>`
 
-**Requirements**: Matplotlib must be installed on your system to generate the visualization.
+**Requirements**: Matplotlib and SciPy must be installed on your system to generate the visualization.
 
 ## Example Output
 
