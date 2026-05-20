@@ -38,7 +38,7 @@ subroutine calc_dirchar
   integer :: i, j, k, ix, l, ncells_tot, i1, i2 ,i3, m, n, sign_vec, mcm, scandiv
   integer :: ncells(3), q(3), p(3)
   real(8) :: xt, yt, zt, cpustart, cpuend, ompstart, ompend
-  real(8) :: dpcos, mod_dir, mod_u, mod_u2, w, rotang, mod_rotdir
+  real(8) :: dpcos, mod_dir, mod_u, mod_u2, w, w2, rotang, mod_rotdir
   real(8) :: u(nag,nqp,nq,3), mass_tot(nag), s1(3), rotdir(3), rotdir_max(3)
   real(8), allocatable :: pos_eq_EC(:,:,:)
   complex(8) :: eexp
@@ -166,9 +166,9 @@ subroutine calc_dirchar
     write(out_dirchar,'(*(a))') '# phonchar v. ', version
     write(out_dirchar,'(*(a))') '# displacement character: u.dir ; group ',i2a(l)
     write(out_dirchar,'(*(a))') '# q-points: ',i2a(nqp),' ; bands: ',i2a(nq)
-    write(out_dirchar,'(a)') '# the weight is the angle (u,dir)'
+    write(out_dirchar,'(a)') '# weight w1 is the angle (u,dir), weight w2 is the angle from acos(abs(dpcos))'
     ! unified mode index is for use with phind
-    write(out_dirchar,'(a)') '# q-point, freq[THz], weight, mod(u), u.dir, mode index, unified mode index'
+    write(out_dirchar,'(a)') '# q-point, freq[THz], w1, w2, mod(u), u.dir, mode index, unified mode index'
     do j = 1, nq
       do k = 1, nqp
         mod_u = sqrt(dot_product(u(l,k,j,:),u(l,k,j,:)))
@@ -181,9 +181,10 @@ subroutine calc_dirchar
             dpcos = sign(1.d0, dpcos)
           end if
           w = rad2deg(acos(dpcos))
+          w2 = rad2deg(acos(abs(dpcos)))
         end if
         n = (k-1)*nq + j
-        write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,E9.3,1x,E9.3,2(1x,a))') i2a(k), freq(k,j), w, mod_u, dot_product(u(l,k,j,:),dir(:)), i2a(j), i2a(n)
+        write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,f7.2,1x,E9.3,1x,E9.3,2(1x,a))') i2a(k), freq(k,j), w, w2, mod_u, dot_product(u(l,k,j,:),dir(:)), i2a(j), i2a(n)
       end do
       write(out_dirchar,*) 
       write(out_dirchar,*) 
@@ -194,8 +195,6 @@ subroutine calc_dirchar
 
   write(*,'(a)') ' Displacement character u(l).dir in dispchar_l.dat files'
 
-  ! dirchar_l1_l2.dat: the weight is the angle (u(l1,k,j,:),u(l2,k,j,:))
-
   do i1 = 1, nag-1
   do i2 = i1+1, nag
 
@@ -204,9 +203,9 @@ subroutine calc_dirchar
     write(out_dirchar,'(*(a))') '# phonchar v. ', version
     write(out_dirchar,'(*(a))') '# displacement character: u(l1=',i2a(i1),').u(l2=',i2a(i2),')'
     write(out_dirchar,'(*(a))') '# q-points: ',i2a(nqp),' ; bands: ',i2a(nq)
-    write(out_dirchar,'(a)') '# the weight is the angle (u(l1),(u(l2))'
+    write(out_dirchar,'(a)') '# weight w1 is the angle (u,dir), weight w2 is the angle from acos(abs(dpcos))'
     ! unified mode index is for use with phind
-    write(out_dirchar,'(a)') '# q-point, freq[THz], weight, mod(u(l1)), mod(u(l2)), u(l1).u(l2), mode index, unified mode index'
+    write(out_dirchar,'(a)') '# q-point, freq[THz], w1, w2, mod(u(l1)), mod(u(l2)), u(l1).u(l2), mode index, unified mode index'
     do j = 1, nq
       do k = 1, nqp
         mod_u = sqrt(dot_product(u(i1,k,j,:),u(i1,k,j,:)))
@@ -220,9 +219,10 @@ subroutine calc_dirchar
             dpcos = sign(1.d0, dpcos)
           end if
           w = rad2deg(acos(dpcos))
+          w2 = rad2deg(acos(abs(dpcos)))
         end if
         n = (k-1)*nq + j
-        write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,2(E9.3,1x),E9.3,2(1x,a))') i2a(k), freq(k,j), w, mod_u, mod_u2, dot_product(u(i1,k,j,:),u(i2,k,j,:)), i2a(j), i2a(n)
+        write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,f7.2,1x,2(E9.3,1x),E9.3,2(1x,a))') i2a(k), freq(k,j), w, w2, mod_u, mod_u2, dot_product(u(i1,k,j,:),u(i2,k,j,:)), i2a(j), i2a(n)
       end do
       write(out_dirchar,*) 
       write(out_dirchar,*) 
@@ -254,7 +254,7 @@ subroutine calc_dirchar
       do j = 1, nq
         do k = 1, nqp
           mod_u = sqrt(dot_product(u(l,k,j,:),u(l,k,j,:)))
-          w = 0.d0
+          w = 1.d3
           if ( abs(mod_u) > tiny(1.d0) ) then
             do ix = 0, scandiv
               rotang = scanang(1) + scanang(3)*ix
@@ -265,7 +265,7 @@ subroutine calc_dirchar
                 write(0,*) warning_string, ' dpcos ',dpcos
                 dpcos = sign(1.d0, dpcos)
               end if
-              if ( rad2deg(acos(dpcos)) > w ) then
+              if ( rad2deg(acos(dpcos)) < w ) then
                 w = rad2deg(acos(dpcos))
                 rotdir_max(:) = rotdir(:)
               end if

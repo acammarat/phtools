@@ -31,6 +31,12 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
+! v 2.5
+! - In dirchar_l.dat, dirchar_l_maxproj.dat and dirchar_l1_l2.dat, added a second weight w2 as an angle in [0,90] deg
+!   to take into account that parallel and antiparallel displacement directions might be considered equivalent like
+!   for example, in the case of layer sliding.
+! - corrected a bug when calculating the weight for dirchar_l1_l2.dat 
+!
 ! v 2.4
 ! Modulus of the displacements is written in dispchar_l.dat, dirchar_l_maxproj.dat and dirchar_l1_l2.dat.
 !

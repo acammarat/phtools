@@ -121,7 +121,7 @@ end module functions
 
 module pars
   ! strings
-  character(3), parameter :: version = '2.4'
+  character(3), parameter :: version = '2.5'
   character(8), parameter :: progname = 'PHONCHAR'
   character(6), parameter :: output_format = 'g22.14', screen_format = 'f12.4'
   character(7), parameter :: error_string = 'ERROR: '
