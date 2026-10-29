@@ -66,9 +66,9 @@ The code runs in with OpenMP parallelisation. The maximum number of OpenMP threa
 After the execution, the following files are created:
 
 1) *eigchar.dat*: the weight is the square modulus of the eigenvector atom component eig(k,j).eig(k,j)*
-2) *dirchar_l.dat*: the weight is the angle between the input direction and the displacement u(l,k,j,:) of the center mass of group l in mode (k,j)
-3) *dirchar_l_maxproj.dat*: the weight is the angle between the center mass displacement u and the rotated direction which maximises the scalar product dir.u
-4) *dirchar_l1_l2.dat*: the weight is the angle in the scalar product u(l1,k,j,:).u(l2,k,j,:) among all the possible group couples (l1,l2)
+2) *dispchar_l.dat*: the weight is the angle between the input direction and the displacement u(l,k,j,:) of the center mass of group l in mode (k,j)
+3) *dispchar_l_maxproj.dat*: the weight is the angle between the center mass displacement u and the rotated direction which maximises the scalar product dir.u
+4) *dispchar_l1_l2.dat*: the weight is the angle in the scalar product u(l1,k,j,:).u(l2,k,j,:) among all the possible group couples (l1,l2)
 5) *dispchar.dat*: the weight is the atom contribution to unitary phonon displacement u_i = m_i^(-1/2) exp(ik.r) eig_i(k,j)
 
 The header of each file contains full information about the format of the data. We recommend to check the value of the scalar products, as very small values (e.g. less than 10<sup>-6</sup>) indicate that unitary displacements are very small.
