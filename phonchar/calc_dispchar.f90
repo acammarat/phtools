@@ -182,7 +182,7 @@ subroutine calc_dispchar
   do j = 1, nq
     do k = 1, nqp
       n = (k-1)*nq + j
-      write(out_dispchar,'(a,1x,f12.6,1x,f7.2,2(1x,a))') i2a(k), freq(k,j), w(k,j), i2a(j), i2a(n)
+      write(out_dispchar,'(a,1x,f19.10,1x,f7.2,2(1x,a))') i2a(k), freq(k,j), w(k,j), i2a(j), i2a(n)
     end do
     write(out_dispchar,*) 
     write(out_dispchar,*) 

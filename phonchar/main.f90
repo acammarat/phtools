@@ -31,6 +31,9 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
+! v 2.6
+! - frequency values are written with the same precision as in band.yaml file
+!
 ! v 2.5
 ! - In dirchar_l.dat, dirchar_l_maxproj.dat and dirchar_l1_l2.dat, added a second weight w2 as an angle in [0,90] deg
 !   to take into account that parallel and antiparallel displacement directions might be considered equivalent like

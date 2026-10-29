@@ -184,7 +184,7 @@ subroutine calc_dirchar
           w2 = rad2deg(acos(abs(dpcos)))
         end if
         n = (k-1)*nq + j
-        write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,f7.2,1x,E9.3,1x,E9.3,2(1x,a))') i2a(k), freq(k,j), w, w2, mod_u, dot_product(u(l,k,j,:),dir(:)), i2a(j), i2a(n)
+        write(out_dirchar,'(a,1x,f19.10,1x,f7.2,1x,f7.2,1x,E9.3,1x,E9.3,2(1x,a))') i2a(k), freq(k,j), w, w2, mod_u, dot_product(u(l,k,j,:),dir(:)), i2a(j), i2a(n)
       end do
       write(out_dirchar,*) 
       write(out_dirchar,*) 
@@ -222,7 +222,7 @@ subroutine calc_dirchar
           w2 = rad2deg(acos(abs(dpcos)))
         end if
         n = (k-1)*nq + j
-        write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,f7.2,1x,2(E9.3,1x),E9.3,2(1x,a))') i2a(k), freq(k,j), w, w2, mod_u, mod_u2, dot_product(u(i1,k,j,:),u(i2,k,j,:)), i2a(j), i2a(n)
+        write(out_dirchar,'(a,1x,f19.10,1x,f7.2,1x,f7.2,1x,2(E9.3,1x),E9.3,2(1x,a))') i2a(k), freq(k,j), w, w2, mod_u, mod_u2, dot_product(u(i1,k,j,:),u(i2,k,j,:)), i2a(j), i2a(n)
       end do
       write(out_dirchar,*) 
       write(out_dirchar,*) 
@@ -272,7 +272,7 @@ subroutine calc_dirchar
             end do
           end if
           n = (k-1)*nq + j
-          write(out_dirchar,'(a,1x,f12.6,1x,f7.2,1x,E9.3,1x,E9.3,2(1x,a))') i2a(k), freq(k,j), w, mod_u, dot_product(u(l,k,j,:),rotdir_max(:)), i2a(j), i2a(n)
+          write(out_dirchar,'(a,1x,f19.10,1x,f7.2,1x,E9.3,1x,E9.3,2(1x,a))') i2a(k), freq(k,j), w, mod_u, dot_product(u(l,k,j,:),rotdir_max(:)), i2a(j), i2a(n)
         end do
         write(out_dirchar,*) 
         write(out_dirchar,*) 
