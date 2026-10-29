@@ -97,7 +97,7 @@ subroutine calc_eigchar
   do j = 1, nq
     do k = 1, nqp
       m = (k-1)*nq + j
-      write(out_eigchar,'(a,1x,f19.10,1x,f7.2,2(1x,a))') i2a(k), freq(k,j), w(k,j), i2a(j), i2a(m)
+      write(out_eigchar,'(a,1x,f20.10,1x,f7.2,2(1x,a))') i2a(k), freq(k,j), w(k,j), i2a(j), i2a(m)
     end do
     write(out_eigchar,*) 
     write(out_eigchar,*) 
